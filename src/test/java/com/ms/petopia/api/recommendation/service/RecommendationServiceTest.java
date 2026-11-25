@@ -155,24 +155,6 @@ class RecommendationServiceTest {
     }
 
     @Test
-    void 이름이_없는_후보_부스는_제외하고_추천한다() {
-        BoothRecommendationRequest request = new BoothRecommendationRequest();
-        request.setNeed("간식");
-        BoothCandidate validCandidate = boothCandidate(1L, "정상 부스");
-        BoothCandidate unnamedCandidate = boothCandidate(2L, null);
-
-        given(boothRecommendationMapper.existsFair(FAIR_ID)).willReturn(true);
-        given(boothRecommendationMapper.selectBoothCandidates(FAIR_ID))
-                .willReturn(List.of(validCandidate, unnamedCandidate));
-        given(claudeBoothRecommender.recommend(List.of(), "간식", List.of(validCandidate)))
-                .willReturn(List.of(new ClaudeBoothRecommender.RecommendationEntry(1L, "추천 이유")));
-
-        List<BoothRecommendationItem> result = recommendationService.recommend(FAIR_ID, null, request);
-
-        assertThat(result).extracting(BoothRecommendationItem::boothId).containsExactly(1L);
-    }
-
-    @Test
     void Claude가_6개_이상_추천해도_5개로_제한한다() {
         BoothRecommendationRequest request = new BoothRecommendationRequest();
         request.setNeed("장난감 찾아요");

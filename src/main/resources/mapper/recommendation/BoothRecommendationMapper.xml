@@ -34,10 +34,8 @@
              , bi.note AS item_note
           FROM booth b
           JOIN application a ON b.application_id = a.application_id
-         LEFT JOIN booth_item bi ON bi.booth_id = b.booth_id
+          LEFT JOIN booth_item bi ON bi.booth_id = b.booth_id
          WHERE a.fair_id = #{fairId}
-           AND b.name IS NOT NULL
-           AND TRIM(b.name) &lt;&gt; ''
          ORDER BY b.booth_id
     </select>
 

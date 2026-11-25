@@ -45,8 +45,7 @@ public class RecommendationService {
         }
 
         //부스 조회
-        List<BoothCandidate> candidates = validCandidates(
-                boothRecommendationMapper.selectBoothCandidates(fairId));
+        List<BoothCandidate> candidates = boothRecommendationMapper.selectBoothCandidates(fairId);
         if (candidates.isEmpty()) {
             return List.of();
         }
@@ -145,8 +144,7 @@ public class RecommendationService {
         }
 
         //부스 조회
-        List<BoothCandidate> candidates = validCandidates(
-                boothRecommendationMapper.selectBoothCandidates(fairId));
+        List<BoothCandidate> candidates = boothRecommendationMapper.selectBoothCandidates(fairId);
         if (candidates.isEmpty()) {
             return List.of();
         }
@@ -249,17 +247,6 @@ public class RecommendationService {
     //홀 하나 안에서, 완전탐색 순열로 총 이동거리가 최소인 방문 순서를 계산
     //그룹 크기가 항상 MAX_HALL_GROUP_SIZE(6) 이하로 캡돼 있어서 순열이 최대 6! = 720가지뿐이라
     //완전탐색으로 충분하다 (다만 입구/게이트 좌표가 시작점 고정할 수 없엉)
-    /**
-     * 추천 결과에는 부스 식별자와 이름이 모두 필요하다. 불완전한 데이터는 제외해
-     * AI 호출 및 {@code Collectors.toMap} 변환에서 전체 요청이 실패하지 않도록 한다.
-     */
-    private List<BoothCandidate> validCandidates(List<BoothCandidate> candidates) {
-        return candidates.stream()
-                .filter(candidate -> candidate.getBoothId() != null)
-                .filter(candidate -> candidate.getName() != null && !candidate.getName().isBlank())
-                .toList();
-    }
-
     private List<BoothSlotLocation> optimizeRouteOrder(List<BoothSlotLocation> slots) {
         if (slots.size() <= 1) {
             return slots;
