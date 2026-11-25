@@ -1,178 +1,131 @@
-# Petopia
+# PETOPIA
 
-반려동물 예약 서비스 백엔드. Spring Boot 4.1 + MyBatis + Flyway + MySQL + Redis.
+### 반려동물 박람회 운영·예약·관리 통합 플랫폼
 
-이 문서는 **클론 직후 로컬에서 서버를 띄우기까지**를 다룬다.
+PETOPIA는 반려동물 박람회의 **행사 운영, 부스 관리, 참가 신청, 예약 및 입장 관리**를 지원하는 웹 플랫폼입니다. 관람객에게는 반려동물 정보를 활용한 맞춤형 부스 추천과 방문 동선을 제공하고, 운영자가 행사 관련 정보를 관리할 수 있도록 구성한 팀 프로젝트입니다.
 
----
+> 이 저장소는 6인 팀 프로젝트의 [원본 저장소](https://github.com/PET0PIA/PETOPIA)를 개인 계정으로 Fork한 버전입니다. 아래에서 **팀 전체 기능**과 **개인 담당·개선 내용**을 구분해 소개합니다.
 
-## 1. 사전 준비
+## 프로젝트 개요
 
-| 항목             | 버전        | 확인                     |
-|----------------|-----------|------------------------|
-| JDK            | 21        | `java -version`        |
-| Docker Desktop | 최신        | `docker -v`            |
-| Docker Compose | v2 (플러그인) | `docker compose version` |
+| 항목 | 내용 |
+| --- | --- |
+| 개발 기간 | 2026.07.28 ~ 2026.08.26 |
+| 개발 인원 | 6명 (팀 프로젝트) |
+| 프로젝트 유형 | 반려동물 박람회 운영 및 관람 서비스 |
+| 담당 분야 | 백엔드 — 인증, 반려동물 정보, AI 부스 추천·동선 |
+| 원본 저장소 | [PET0PIA/PETOPIA](https://github.com/PET0PIA/PETOPIA) |
 
-- Gradle은 따로 설치하지 않는다. 저장소에 포함된 래퍼(`./gradlew`)가 9.5.1을 자동으로 받는다.
-- JDK 21이 없어도 Gradle 툴체인이 내려받을 수 있지만, IDE 실행을 위해 로컬에 21을 설치해 두는 편이 편하다.
-- Docker Compose는 v2 기준이다. `docker-compose`(하이픈) 대신 `docker compose`(공백)를 쓴다.
+## 기술 스택
 
----
+| 구분 | 사용 기술 |
+| --- | --- |
+| Backend | Java 21, Spring Boot, MyBatis |
+| Database / Cache | MySQL, Redis |
+| Frontend (팀) | React |
+| External API | Claude API |
+| Storage (팀) | AWS S3 |
+| Collaboration | Git, GitHub |
 
-## 2. 클론
+## 주요 기능 — 팀 전체
 
-```bash
-git clone <repository-url> petopia && cd petopia
-```
+- 박람회 행사 및 부스 정보 관리
+- 참가 신청, 예약 및 입장 관리
+- 회원 인증 및 반려동물 정보 관리
+- 반려동물 특성을 고려한 부스 추천과 방문 동선 제공
 
----
+※ 위 항목은 팀 프로젝트의 주요 서비스 기능이며, 전체 기능을 개인이 모두 구현했다는 의미가 아닙니다.
 
-## 3. 인프라 컨테이너 실행 (MySQL + Redis)
+## 개인 담당 기능
 
-로컬 개발용 `docker-compose.yaml`에는 MySQL 8.0과 Redis 7이 정의돼 있다. **애플리케이션은 컨테이너에 포함되지 않는다.** DB/Redis만 컨테이너로 띄우고 앱은 IDE나 Gradle로 직접 실행하는 구성이다.
+### 1. JWT 인증 및 Refresh Token 관리
 
-```bash
-docker compose up -d
-```
+- Access Token과 Refresh Token을 구분한 인증 흐름 구현
+- Redis를 활용한 Refresh Token 관리 및 재발급 처리
+- 동일 Refresh Token에 대한 중복 소비 가능성을 줄이기 위해 `GETDEL` 적용
 
-로컬용 compose는 값이 파일에 하드코딩돼 있어 `.env` 없이 바로 뜬다.
+**처리 흐름**
 
-| 서비스   | 컨테이너              | 포트   | 계정 / 비밀번호                                        |
-|-------|-------------------|------|--------------------------------------------------|
-| MySQL | petopia-mysql-local | 3306 | `petopia_user` / `userpassword123!` (DB: `petopia_db`) |
-| Redis | petopia-redis-local | 6379 | requirepass `rootpassword123!`                   |
+1. 로그인 이후 Access Token과 Refresh Token 발급
+2. 인증이 필요한 API 요청에서 JWT 유효성 검증
+3. 토큰 재발급 시 Redis에서 기존 Refresh Token을 조회하면서 삭제
+4. 기존 토큰의 소비 결과를 확인한 뒤 재발급 처리
 
-MySQL root 비밀번호는 `rootpassword123!`. 타임존은 둘 다 `Asia/Seoul`, MySQL 문자셋은 `utf8mb4`다.
+### 2. 반려동물 정보 관리
 
-상태 확인:
+- 반려동물 정보 등록·조회·수정 기능 구현
+- 부스 추천 시 활용할 반려동물 특성 및 요구사항 데이터 연계
 
-```bash
-docker compose ps
-```
+### 3. Claude API 기반 맞춤형 부스 추천 및 동선 생성
 
-MySQL은 컨테이너가 `Up`이 된 뒤에도 초기화에 10~20초가 더 걸린다. 아래 명령이 통과하면 접속 준비가 끝난 것이다.
+- 반려동물 정보, 알레르기 및 요구사항을 활용해 추천 조건 구성
+- Claude API로 추천 부스 ID와 추천 이유를 수신
+- **실제 DB의 부스 목록과 대조**해 존재하지 않는 부스 및 중복 추천 결과 제거
+- 검증을 통과한 부스의 좌표를 활용해 서버에서 방문 순서 계산
 
-```bash
-docker exec petopia-mysql-local mysqladmin ping -upetopia_user -puserpassword123!
-```
+**처리 흐름**
 
-Redis도 함께 확인하려면:
+`추천 조건 구성 → Claude API 호출 → DB 기반 결과 검증 → 좌표 기반 방문 순서 계산`
 
-```bash
-docker exec petopia-redis-local redis-cli -a 'rootpassword123!' ping
-```
+AI가 반환한 값을 그대로 화면에 전달하지 않고, **서버에서 실제 데이터와 대조해 결과를 검증**하도록 구성했습니다.
 
-> 3306 / 6379 포트를 이미 쓰고 있다면(로컬에 MySQL이 설치돼 있는 경우 등) 컨테이너가 뜨지 않는다. 아래 [문제 해결](#7-문제-해결)을 참고한다.
+## 문제 해결 및 개선
 
----
+### 1. Redis `GETDEL`을 활용한 Refresh Token 중복 소비 방지
 
-## 4. 애플리케이션 실행
+**문제**
 
-프로필을 지정하지 않으면 `local`로 동작한다(`application.yaml`의 `spring.profiles.default`). `application-local.yaml`의 기본값이 위 compose 설정과 맞춰져 있어, **별도 환경변수 없이 그대로 실행하면 된다.**
+기존 토큰의 조회와 삭제가 분리되면, 동일 Refresh Token을 이용한 요청이 동시에 발생했을 때 여러 요청이 토큰을 사용 가능하다고 판단할 수 있습니다.
 
-```bash
-./gradlew bootRun
-```
+**개선**
 
-IntelliJ에서는 `PetopiaApplication`을 그냥 실행하면 된다.
+- Redis `GETDEL`을 사용해 단일 키의 **조회와 삭제를 하나의 원자적 명령**으로 처리
+- 실제 Redis를 사용한 동시성 통합 테스트 추가
 
-기동 로그에 아래 경고가 보이는 것은 정상이다. 마이그레이션 SQL이 아직 없어서 나는 것으로, `V1__init.sql`이 추가되면 사라진다. 자세한 내용은 [src/main/resources/db/migration/README.md](src/main/resources/db/migration/README.md)에 있다.
+**검증**
 
-```
-WARN o.f.core.internal.command.DbValidate : No migrations found. Are your locations set up correctly?
-```
+| 검증 항목 | 결과 |
+| --- | --- |
+| 테스트 조건 | 동일 토큰에 대한 100건의 동시 소비 시도 × 5회 |
+| 각 회차 결과 | 성공 1건 / 나머지 99건 거부 |
+| 중복 성공 | 총 0건 |
 
-> **DB가 떠 있어야 앱이 뜬다.** Flyway가 기동 시점에 DB에 접속하기 때문에, 컨테이너를 올리지 않은 채 실행하면 애플리케이션과 `@SpringBootTest`가 함께 실패한다.
+이 결과는 **해당 테스트 조건에서 Redis 기반 토큰 소비 단계의 중복 성공이 관측되지 않았음**을 의미합니다. 토큰 재발급 전체 과정의 모든 장애 상황까지 보장한다는 의미는 아닙니다.
 
----
+관련 코드: [`RefreshTokenConcurrencyIntegrationTest.java`](src/test/java/com/ms/petopia/api/auth/service/RefreshTokenConcurrencyIntegrationTest.java)
 
-## 5. 동작 확인
+### 2. AI 추천 결과의 데이터 검증 강화
 
-서버는 8080 포트로 뜬다. 인프라 배선(로깅 필터 / DB / Redis) 점검용 API가 있다.
+**문제**
 
-```bash
-curl http://localhost:8080/api/reservation/health
-```
+외부 AI API 응답에 실제 행사 데이터에 존재하지 않는 부스 ID나 중복 부스가 포함될 수 있었습니다.
 
-DB와 Redis가 모두 정상이면 200, 하나라도 실패하면 503이 떨어진다.
+**개선**
 
-| 메서드  | 경로                              | 확인 대상                       |
-|------|---------------------------------|-----------------------------|
-| GET  | `/api/reservation/health`       | DB + Redis 동시 점검            |
-| GET  | `/api/reservation/health/db`    | DUAL 조회 (MyBatis)           |
-| GET  | `/api/reservation/health/redis` | Redis SET/GET/DEL           |
-| GET  | `/api/reservation/health/logs`  | 레벨별 로그 출력                   |
-| POST | `/api/reservation/health/echo`  | 요청 바디 로깅 / 마스킹 확인           |
-| GET  | `/api/reservation/health/error` | 예외 로깅 + GlobalExceptionHandler |
+- 추천 결과를 DB의 실제 부스 정보와 대조
+- 유효하지 않은 부스 ID와 중복 결과 제거
+- 추천의 의미적 판단은 AI에 맡기되, **데이터 검증과 방문 순서 계산은 서버에서 처리**하도록 역할 구분
 
-Postman을 쓴다면 [postman/petopia.postman_collection.json](postman/petopia.postman_collection.json)을 임포트한다. `baseUrl`이 `http://localhost:8080`으로 잡혀 있다.
+**확인 사항**
 
-테스트 실행:
+추천 결과의 존재 여부·중복 여부를 검증했습니다. 다만 이러한 검증만으로 추천 품질이나 최적 동선을 보장하는 것은 아닙니다.
 
-```bash
-./gradlew test
-```
+관련 코드:
 
----
+- [`RecommendationService.java`](src/main/java/com/ms/petopia/api/recommendation/service/RecommendationService.java)
+- [`BoothRecommendationMapper.xml`](src/main/resources/mapper/recommendation/BoothRecommendationMapper.xml)
+- [`RecommendationServiceTest.java`](src/test/java/com/ms/petopia/api/recommendation/service/RecommendationServiceTest.java)
 
-## 6. 참고 사항
+## 개인 Fork에서 진행한 후속 개선
 
-### 컨테이너 정리
+팀 프로젝트 종료 후 개인 Fork에서 추천 결과 검증 로직을 보완하고, 인증 동시성 및 추천 서비스 관련 테스트 코드를 추가·수정했습니다.
 
-```bash
-docker compose down
-```
+> 후속 개선 내용은 팀 원본 저장소에 반영하지 않고 **이 개인 Fork에서 별도로 관리**합니다.
 
-데이터까지 지우려면 `docker compose down -v`를 쓴다. 현재 compose에는 named volume이 없어 컨테이너를 지우면 DB 데이터도 함께 사라진다. 스키마는 Flyway가 다시 만들어 준다.
+## 원본 프로젝트 및 기여 범위
 
-### 스키마 변경
+- **팀 원본:** [PET0PIA/PETOPIA](https://github.com/PET0PIA/PETOPIA)
+- **개인 Fork:** [kanak71/PETOPIA](https://github.com/kanak71/PETOPIA)
+- **개인 담당:** JWT/Redis 인증 처리, 반려동물 정보 API, Claude API 기반 부스 추천·동선, 관련 후속 개선·테스트
 
-DB에 직접 DDL을 치지 않는다. 전부 `src/main/resources/db/migration`의 SQL 파일로만 한다. 파일명 규칙과 주의사항은 해당 디렉터리의 README에 정리돼 있다.
-
-### `.env`는 로컬에 필요 없다
-
-`.env` / `.env.example` 와 `docker-compose.release.yaml`은 **운영 배포용**이다. 로컬 개발에는 쓰이지 않는다. 운영 환경을 구성할 때만 아래처럼 복사해 값을 채운다.
-
-```bash
-cp .env.example .env
-```
-
-`.env`는 커밋하지 않는다(`.gitignore`). 어떤 키가 필요한지는 `.env.example`로 관리한다.
-
-### 프로필
-
-| 프로필       | 설정 파일                       | 용도                                            |
-|-----------|-----------------------------|-----------------------------------------------|
-| `local`   | `application-local.yaml`    | 기본값. compose 설정이 하드코딩돼 있어 그대로 실행 가능. SQL 로그 출력 |
-| `release` | `application-release.yaml`  | 운영. 모든 값을 `.env` 환경변수에서 읽음. SQL 로그 미출력          |
-
-`release`로 실행할 때는 `--spring.profiles.active=release`를 붙인다.
-
----
-
-## 7. 문제 해결
-
-**포트 충돌 (`port is already allocated`)**
-
-3306 또는 6379를 이미 다른 프로세스가 쓰고 있다. 점유 프로세스를 확인한다.
-
-```bash
-lsof -i :3306
-```
-
-로컬에 설치된 MySQL이라면 중지하거나(`brew services stop mysql`), `docker-compose.yaml`의 호스트 포트를 `"3307:3306"`처럼 바꾼다. 포트를 바꿨다면 실행 시 `DB_PORT` 환경변수도 함께 넘겨야 앱이 같은 곳을 바라본다.
-
-**기동 시 `Communications link failure` / Flyway 연결 오류**
-
-MySQL 컨테이너가 아직 초기화 중이다. 위의 `mysqladmin ping`이 통과할 때까지 기다린 뒤 다시 실행한다.
-
-**Redis `NOAUTH` 또는 인증 실패**
-
-compose의 `--requirepass` 값과 `application-local.yaml`의 `spring.data.redis.password`가 어긋난 경우다. 둘 다 `rootpassword123!`이어야 한다.
-
-**컨테이너 로그 확인**
-
-```bash
-docker compose logs -f mysql
-```
+본 README는 취업용 기술 포트폴리오를 위해 팀 전체 프로젝트 개요와 개인 기여를 구분하여 정리한 문서입니다.
