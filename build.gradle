@@ -67,8 +67,15 @@ dependencies {
     implementation 'com.google.zxing:core:3.5.3'
     implementation 'com.google.zxing:javase:3.5.3'
 
+    //refresh token 정량적 수치를 위한 의존성
+    testImplementation 'org.testcontainers:junit-jupiter:1.21.3'
+
 }
 
 tasks.named('test') {
     useJUnitPlatform()
+
+    testLogging {
+        showStandardStreams = true
+    }
 }
