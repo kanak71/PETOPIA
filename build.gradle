@@ -71,8 +71,15 @@ dependencies {
     // developmentOnly라 배포용 아티팩트(bootJar)에는 포함되지 않는다.
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
+    //refresh token 정량적 수치를 위한 의존성
+    testImplementation 'org.testcontainers:junit-jupiter:1.21.3'
+
 }
 
 tasks.named('test') {
     useJUnitPlatform()
+
+    testLogging {
+        showStandardStreams = true
+    }
 }
